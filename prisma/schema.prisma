@@ -1,0 +1,115 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  OPERATOR
+  ADMIN
+}
+
+enum InfoCategory {
+  ROAD_CLOSURE
+  SMOKE_TEST
+  GAS_FLARING
+  OTHER
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum Shift {
+  DAY
+  NIGHT
+  EVENING
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+enum EntityType {
+  DAILY_INFO
+  DUTY_ROSTER
+  USER
+  BONFIRE
+}
+
+model User {
+  id            String       @id @default(cuid())
+  email         String       @unique
+  name          String?
+  image         String?
+  role          UserRole     @default(OPERATOR)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  dailyInfos    DailyInfo[]
+  dutyRosters   DutyRoster[]
+  auditLogs     AuditLog[]
+}
+
+model DailyInfo {
+  id          String        @id @default(cuid())
+  title       String
+  description String
+  category    InfoCategory
+  priority    Priority      @default(MEDIUM)
+  validFrom   DateTime
+  validUntil  DateTime?
+
+  createdById String
+  createdBy   User          @relation(fields: [createdById], references: [id])
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([validFrom, validUntil])
+  @@index([category])
+}
+
+model DutyRoster {
+  id            String   @id @default(cuid())
+  date          DateTime
+  operatorName  String
+  shift         Shift
+  notes         String?
+
+  createdById   String
+  createdBy     User     @relation(fields: [createdById], references: [id])
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([date, shift])
+  @@index([date])
+}
+
+model AuditLog {
+  id          String      @id @default(cuid())
+  action      AuditAction
+  entityType  EntityType
+  entityId    String
+  changes     Json?
+
+  userId      String
+  user        User        @relation(fields: [userId], references: [id])
+
+  createdAt   DateTime    @default(now())
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+}
